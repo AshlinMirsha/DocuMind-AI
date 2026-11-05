@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { askQuestion, type Source } from '../services/api';
 
 interface Message {
@@ -16,6 +16,12 @@ export default function ChatWindow({ documentId }: ChatWindowProps) {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,60 +62,137 @@ export default function ChatWindow({ documentId }: ChatWindowProps) {
   return (
     <div className="chat-window">
 
+      {/* Chat Header */}
       <div className="chat-header">
-        <h2>Chat with your PDF</h2>
-        <p>Ask anything about your uploaded document.</p>
+        <div className="chat-header-icon">✦</div>
+
+        <div>
+          <h2>Document Assistant</h2>
+          <p>Ask questions and explore your PDF</p>
+        </div>
+
+        <span className="online-status">
+          <span></span> AI Ready
+        </span>
       </div>
 
+      {/* Chat Messages */}
       <div className="chat-messages">
 
         {messages.length === 0 && (
           <div className="empty-chat">
-            <h3>Welcome to DocuMind AI!</h3>
-            <p>Ask your first question about the PDF.</p>
+            <div className="welcome-icon">✦</div>
+
+            <h3>What would you like to know?</h3>
+
+            <p>
+              Your document is ready. Ask me anything about its
+              contents, and I'll help you find the answer.
+            </p>
+
+            <div className="suggestion-label">
+              START WITH A QUESTION
+            </div>
+
+            <div className="suggestion-list">
+              <button
+                type="button"
+                onClick={() => setQuestion('Summarize this document')}
+              >
+                Summarize this document
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setQuestion('What are the main topics?')}
+              >
+                What are the main topics?
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setQuestion('Explain the important points')}
+              >
+                Explain the important points
+              </button>
+            </div>
           </div>
         )}
 
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`message ${message.role}`}
+            className={`message-row ${message.role}`}
           >
-            <strong>
-              {message.role === 'user' ? 'You' : 'DocuMind AI'}
-            </strong>
+            {message.role === 'assistant' && (
+              <div className="message-avatar">✦</div>
+            )}
 
-            <p>{message.content}</p>
+            <div className="message-content">
+              <span className="message-sender">
+                {message.role === 'user' ? 'You' : 'DocuMind AI'}
+              </span>
 
-            {message.sources && (
-              <div className="sources">
-                <strong>Sources:</strong>
+              <div className="message-bubble">
+                <p>{message.content}</p>
 
-                {message.sources.map((source, sourceIndex) => (
-                  <span key={sourceIndex}>
-                    Page {source.page}
-                  </span>
-                ))}
+                {message.sources && message.sources.length > 0 && (
+                  <div className="sources">
+                    <span className="sources-title">
+                      Sources from your PDF
+                    </span>
+
+                    <div className="source-list">
+                      {message.sources.map((source, sourceIndex) => (
+                        <span key={sourceIndex} className="source-tag">
+                          Page {source.page}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
+
+            {message.role === 'user' && (
+              <div className="user-avatar">M</div>
             )}
           </div>
         ))}
 
         {loading && (
-          <div className="loading-message">
-            AI is thinking...
+          <div className="message-row assistant">
+            <div className="message-avatar">✦</div>
+
+            <div className="message-content">
+              <span className="message-sender">DocuMind AI</span>
+
+              <div className="message-bubble typing-bubble">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
           </div>
         )}
 
+        <div ref={messagesEndRef} />
+
       </div>
 
-      {error && <p className="error-message">{error}</p>}
+      {/* Error Message */}
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
 
+      {/* Chat Input */}
       <form onSubmit={handleSubmit} className="chat-input">
 
         <input
           type="text"
-          placeholder="Ask a question about your PDF..."
+          placeholder="Message DocuMind AI..."
           value={question}
           onChange={event => setQuestion(event.target.value)}
           disabled={loading}
@@ -118,11 +201,16 @@ export default function ChatWindow({ documentId }: ChatWindowProps) {
         <button
           type="submit"
           disabled={!question.trim() || loading}
+          aria-label="Send message"
         >
-          Send
+          ➤
         </button>
 
       </form>
+
+      <p className="chat-footer">
+        DocuMind AI can make mistakes. Verify important information with your document.
+      </p>
 
     </div>
   );
